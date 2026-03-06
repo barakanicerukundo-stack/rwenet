@@ -1,5 +1,8 @@
+import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, Users, FileText, Upload } from "lucide-react";
+import { BookOpen, Users, FileText, Upload, Search, ChevronUp, ChevronDown, Filter, Bell, CheckCircle2, AlertCircle, Info, TrendingUp, Clock } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
+import { motion, AnimatePresence } from "framer-motion";
 
 const courses = [
   { title: "Mathematics S4", students: 42, assignments: 8, pending: 12 },
@@ -7,90 +10,267 @@ const courses = [
   { title: "Mathematics S6", students: 35, assignments: 10, pending: 18 },
 ];
 
-const recentSubmissions = [
-  { student: "Alice Mukamana", assignment: "Trigonometry Quiz", date: "Feb 23, 2026", status: "Pending" },
-  { student: "Eric Niyonzima", assignment: "Trigonometry Quiz", date: "Feb 23, 2026", status: "Graded" },
-  { student: "Grace Uwase", assignment: "Algebra Homework", date: "Feb 22, 2026", status: "Pending" },
-  { student: "David Habimana", assignment: "Algebra Homework", date: "Feb 22, 2026", status: "Graded" },
+const gradeDistribution = [
+  { name: "A (80-100)", value: 28, color: "hsl(145, 63%, 35%)" },
+  { name: "B (60-79)", value: 45, color: "hsl(199, 89%, 40%)" },
+  { name: "C (40-59)", value: 30, color: "hsl(45, 93%, 52%)" },
+  { name: "D (<40)", value: 12, color: "hsl(0, 72%, 51%)" },
 ];
 
+const studentPerformance = [
+  { month: "Sep", s4: 62, s5: 58, s6: 70 },
+  { month: "Oct", s4: 65, s5: 60, s6: 72 },
+  { month: "Nov", s4: 70, s5: 65, s6: 68 },
+  { month: "Dec", s4: 68, s5: 62, s6: 75 },
+  { month: "Jan", s4: 74, s5: 70, s6: 78 },
+  { month: "Feb", s4: 78, s5: 72, s6: 80 },
+];
+
+const submissionRate = [
+  { week: "W1", onTime: 85, late: 10, missing: 5 },
+  { week: "W2", onTime: 78, late: 15, missing: 7 },
+  { week: "W3", onTime: 90, late: 8, missing: 2 },
+  { week: "W4", onTime: 82, late: 12, missing: 6 },
+];
+
+const allSubmissions = [
+  { id: 1, student: "Alice Mukamana", assignment: "Trigonometry Quiz", course: "Mathematics S4", date: "Feb 23, 2026", status: "Pending", grade: null },
+  { id: 2, student: "Eric Niyonzima", assignment: "Trigonometry Quiz", course: "Mathematics S4", date: "Feb 23, 2026", status: "Graded", grade: "85%" },
+  { id: 3, student: "Grace Uwase", assignment: "Algebra Homework", course: "Mathematics S4", date: "Feb 22, 2026", status: "Pending", grade: null },
+  { id: 4, student: "David Habimana", assignment: "Algebra Homework", course: "Mathematics S4", date: "Feb 22, 2026", status: "Graded", grade: "72%" },
+  { id: 5, student: "Marie Ingabire", assignment: "Calculus Test", course: "Mathematics S5", date: "Feb 21, 2026", status: "Graded", grade: "90%" },
+  { id: 6, student: "Patrick Mugisha", assignment: "Calculus Test", course: "Mathematics S5", date: "Feb 21, 2026", status: "Late", grade: null },
+  { id: 7, student: "Diane Uwera", assignment: "Probability Quiz", course: "Mathematics S6", date: "Feb 20, 2026", status: "Graded", grade: "68%" },
+  { id: 8, student: "Jean Bosco", assignment: "Probability Quiz", course: "Mathematics S6", date: "Feb 20, 2026", status: "Pending", grade: null },
+  { id: 9, student: "Aline Kamali", assignment: "Vectors Worksheet", course: "Mathematics S4", date: "Feb 19, 2026", status: "Graded", grade: "78%" },
+  { id: 10, student: "Claude Bizimana", assignment: "Statistics Project", course: "Mathematics S6", date: "Feb 18, 2026", status: "Late", grade: "55%" },
+];
+
+const notifications = [
+  { id: 1, message: "12 new submissions awaiting review", type: "warning", time: "5 min ago", read: false },
+  { id: 2, message: "Alice Mukamana submitted Trigonometry Quiz", type: "info", time: "30 min ago", read: false },
+  { id: 3, message: "S4 class average improved by 5%", type: "success", time: "2h ago", read: false },
+  { id: 4, message: "New curriculum updates available", type: "info", time: "1d ago", read: true },
+  { id: 5, message: "Parent-teacher conference scheduled for Mar 10", type: "info", time: "2d ago", read: true },
+];
+
+type SortField = "student" | "assignment" | "course" | "date" | "status";
+type SortDir = "asc" | "desc";
+
 const TeacherDashboard = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [courseFilter, setCourseFilter] = useState("all");
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [readNotifications, setReadNotifications] = useState<number[]>([]);
+
+  const unreadCount = notifications.filter(n => !n.read && !readNotifications.includes(n.id)).length;
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const filteredSubmissions = useMemo(() => {
+    let result = [...allSubmissions];
+    if (searchQuery) result = result.filter(s => s.student.toLowerCase().includes(searchQuery.toLowerCase()) || s.assignment.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (statusFilter !== "all") result = result.filter(s => s.status.toLowerCase() === statusFilter);
+    if (courseFilter !== "all") result = result.filter(s => s.course === courseFilter);
+    result.sort((a, b) => {
+      const valA = a[sortField]; const valB = b[sortField];
+      const cmp = typeof valA === "string" && typeof valB === "string" ? valA.localeCompare(valB) : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return result;
+  }, [searchQuery, statusFilter, courseFilter, sortField, sortDir]);
+
+  const SortIcon = ({ field }: { field: SortField }) => (
+    sortField === field ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronUp className="h-3 w-3 opacity-30" />
+  );
+
+  const notifIcon = (type: string) => {
+    if (type === "success") return <CheckCircle2 className="h-4 w-4 text-secondary" />;
+    if (type === "warning") return <AlertCircle className="h-4 w-4 text-accent-foreground" />;
+    return <Info className="h-4 w-4 text-primary" />;
+  };
+
   return (
     <DashboardLayout role="teacher" userName="Ms. Nkurunziza">
+      {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { icon: BookOpen, label: "Active Courses", value: "3", color: "bg-primary/10 text-primary" },
           { icon: Users, label: "Total Students", value: "115", color: "bg-secondary/10 text-secondary" },
           { icon: FileText, label: "Pending Grades", value: "35", color: "bg-accent/20 text-accent-foreground" },
           { icon: Upload, label: "Resources", value: "47", color: "bg-destructive/10 text-destructive" },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-border bg-card p-5">
-            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}>
-              <stat.icon className="h-5 w-5" />
-            </div>
+        ].map(stat => (
+          <motion.div key={stat.label} whileHover={{ y: -2 }} className="rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
+            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}><stat.icon className="h-5 w-5" /></div>
             <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
             <p className="text-sm text-muted-foreground">{stat.label}</p>
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">My Courses</h2>
-          <div className="space-y-3">
-            {courses.map((course) => (
-              <div key={course.title} className="rounded-xl border border-border bg-card p-5">
-                <h3 className="font-semibold text-foreground">{course.title}</h3>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-muted p-2">
-                    <p className="font-display text-lg font-bold text-foreground">{course.students}</p>
-                    <p className="text-xs text-muted-foreground">Students</p>
-                  </div>
-                  <div className="rounded-lg bg-muted p-2">
-                    <p className="font-display text-lg font-bold text-foreground">{course.assignments}</p>
-                    <p className="text-xs text-muted-foreground">Assignments</p>
-                  </div>
-                  <div className="rounded-lg bg-muted p-2">
-                    <p className="font-display text-lg font-bold text-primary">{course.pending}</p>
-                    <p className="text-xs text-muted-foreground">To Grade</p>
-                  </div>
-                </div>
-              </div>
+      {/* Charts */}
+      <div className="mb-8 grid gap-6 lg:grid-cols-3">
+        {/* Class Performance Trends */}
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Class Performance Trends</h2>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={studentPerformance}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(215, 12%, 50%)" }} />
+              <YAxis domain={[40, 100]} tick={{ fontSize: 12, fill: "hsl(215, 12%, 50%)" }} />
+              <Tooltip contentStyle={{ borderRadius: "0.75rem", border: "1px solid hsl(214, 20%, 88%)" }} />
+              <Legend />
+              <Line type="monotone" dataKey="s4" stroke="hsl(199, 89%, 40%)" strokeWidth={2} dot={{ r: 4 }} name="S4" />
+              <Line type="monotone" dataKey="s5" stroke="hsl(145, 63%, 35%)" strokeWidth={2} dot={{ r: 4 }} name="S5" />
+              <Line type="monotone" dataKey="s6" stroke="hsl(45, 93%, 52%)" strokeWidth={2} dot={{ r: 4 }} name="S6" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Grade Distribution Pie */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Grade Distribution</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={gradeDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
+                {gradeDistribution.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+              </Pie>
+              <Tooltip contentStyle={{ borderRadius: "0.75rem", border: "1px solid hsl(214, 20%, 88%)" }} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="mt-2 grid grid-cols-2 gap-1">
+            {gradeDistribution.map(g => (
+              <span key={g.name} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: g.color }} />{g.name}
+              </span>
             ))}
           </div>
         </div>
+      </div>
 
-        <div>
-          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Recent Submissions</h2>
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Student</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Assignment</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentSubmissions.map((sub, i) => (
-                  <tr key={i} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 font-medium text-foreground">{sub.student}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{sub.assignment}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                          sub.status === "Graded"
-                            ? "bg-secondary/10 text-secondary"
-                            : "bg-accent/20 text-accent-foreground"
-                        }`}
-                      >
-                        {sub.status}
-                      </span>
-                    </td>
-                  </tr>
+      {/* Submission Rate Chart */}
+      <div className="mb-8 rounded-2xl border border-border bg-card p-5">
+        <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Submission Rate (Last 4 Weeks)</h2>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={submissionRate}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
+            <XAxis dataKey="week" tick={{ fontSize: 12, fill: "hsl(215, 12%, 50%)" }} />
+            <YAxis tick={{ fontSize: 12, fill: "hsl(215, 12%, 50%)" }} />
+            <Tooltip contentStyle={{ borderRadius: "0.75rem", border: "1px solid hsl(214, 20%, 88%)" }} />
+            <Legend />
+            <Bar dataKey="onTime" stackId="a" fill="hsl(145, 63%, 35%)" name="On Time" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="late" stackId="a" fill="hsl(45, 93%, 52%)" name="Late" />
+            <Bar dataKey="missing" stackId="a" fill="hsl(0, 72%, 51%)" name="Missing" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Submissions Table */}
+        <div className="lg:col-span-2">
+          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">All Submissions</h2>
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input type="text" placeholder="Search students or assignments..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                {["all", "pending", "graded", "late"].map(f => (
+                  <button key={f} onClick={() => setStatusFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
                 ))}
-              </tbody>
-            </table>
+              </div>
+              <select value={courseFilter} onChange={e => setCourseFilter(e.target.value)} className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs outline-none focus:border-primary">
+                <option value="all">All Courses</option>
+                {courses.map(c => <option key={c.title} value={c.title}>{c.title}</option>)}
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    {([["student", "Student"], ["assignment", "Assignment"], ["course", "Course"], ["date", "Date"], ["status", "Status"]] as [SortField, string][]).map(([field, label]) => (
+                      <th key={field} className="px-4 py-3 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => toggleSort(field)}>
+                        <span className="flex items-center gap-1">{label} <SortIcon field={field} /></span>
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <AnimatePresence>
+                    {filteredSubmissions.map(sub => (
+                      <motion.tr key={sub.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-3 font-medium text-foreground">{sub.student}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{sub.assignment}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{sub.course}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{sub.date}</td>
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                            sub.status === "Graded" ? "bg-secondary/10 text-secondary" : sub.status === "Late" ? "bg-destructive/10 text-destructive" : "bg-accent/20 text-accent-foreground"
+                          }`}>{sub.status}</span>
+                        </td>
+                        <td className="px-4 py-3 font-display font-semibold text-foreground">{sub.grade || "—"}</td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                </tbody>
+              </table>
+              {filteredSubmissions.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No submissions found</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar: Notifications + Courses */}
+        <div className="space-y-6">
+          {/* Notifications */}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h2 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+                Notifications
+                {unreadCount > 0 && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">{unreadCount}</span>}
+              </h2>
+              <button onClick={() => setReadNotifications(notifications.map(n => n.id))} className="text-xs font-medium text-primary hover:underline">Mark all read</button>
+            </div>
+            {notifications.map(n => {
+              const isRead = n.read || readNotifications.includes(n.id);
+              return (
+                <div key={n.id} onClick={() => setReadNotifications(prev => [...prev, n.id])} className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-0 cursor-pointer transition-colors hover:bg-muted/30 ${!isRead ? "bg-primary/5" : ""}`}>
+                  {notifIcon(n.type)}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm ${!isRead ? "font-medium text-foreground" : "text-muted-foreground"}`}>{n.message}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{n.time}</p>
+                  </div>
+                  {!isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* My Courses */}
+          <div>
+            <h2 className="mb-4 font-display text-lg font-semibold text-foreground">My Courses</h2>
+            <div className="space-y-3">
+              {courses.map(course => (
+                <motion.div key={course.title} whileHover={{ y: -2 }} className="rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
+                  <h3 className="font-semibold text-foreground">{course.title}</h3>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-muted p-2"><p className="font-display text-lg font-bold text-foreground">{course.students}</p><p className="text-xs text-muted-foreground">Students</p></div>
+                    <div className="rounded-lg bg-muted p-2"><p className="font-display text-lg font-bold text-foreground">{course.assignments}</p><p className="text-xs text-muted-foreground">Tasks</p></div>
+                    <div className="rounded-lg bg-muted p-2"><p className="font-display text-lg font-bold text-primary">{course.pending}</p><p className="text-xs text-muted-foreground">To Grade</p></div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
