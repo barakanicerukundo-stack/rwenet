@@ -1,11 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/components/AuthProvider";
-import { BookOpen, FileText, BarChart3, Bell, Clock, ChevronUp, ChevronDown, Search, Filter, X, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { useStudentCourses, useStudentAssignments, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/hooks/useData";
+import { BookOpen, FileText, BarChart3, Bell, Clock, ChevronUp, ChevronDown, Search, Filter, CheckCircle2, AlertCircle, Info, Plus } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 
-const courses = [
+// Fallback data for when DB is empty
+const fallbackCourses = [
   { title: "Mathematics S4", teacher: "Mr. Nkurunziza", progress: 72, grade: "B+", lastAccessed: "2h ago" },
   { title: "Physics S4", teacher: "Ms. Uwimana", progress: 58, grade: "B", lastAccessed: "1d ago" },
   { title: "English Language", teacher: "Mr. Mugabo", progress: 85, grade: "A-", lastAccessed: "5h ago" },
@@ -40,24 +42,21 @@ const skillsData = [
   { subject: "Analysis", score: 78 },
 ];
 
-const assignments = [
-  { id: 1, title: "Trigonometry Quiz", course: "Mathematics S4", dueDate: "Feb 28, 2026", status: "pending", type: "Exam", grade: null },
-  { id: 2, title: "Physics Lab Report", course: "Physics S4", dueDate: "Mar 2, 2026", status: "pending", type: "Assignment", grade: null },
-  { id: 3, title: "English Essay", course: "English Language", dueDate: "Mar 5, 2026", status: "pending", type: "Assignment", grade: null },
-  { id: 4, title: "Algebra Homework", course: "Mathematics S4", dueDate: "Feb 20, 2026", status: "graded", type: "Homework", grade: "85%" },
-  { id: 5, title: "Circuit Diagram", course: "Physics S4", dueDate: "Feb 18, 2026", status: "graded", type: "Lab", grade: "72%" },
-  { id: 6, title: "HTML/CSS Project", course: "ICT & Computer Science", dueDate: "Feb 15, 2026", status: "graded", type: "Project", grade: "90%" },
-  { id: 7, title: "Reading Comprehension", course: "English Language", dueDate: "Feb 12, 2026", status: "graded", type: "Test", grade: "88%" },
-  { id: 8, title: "Quadratic Equations", course: "Mathematics S4", dueDate: "Feb 10, 2026", status: "late", type: "Homework", grade: "60%" },
+const fallbackAssignments = [
+  { id: "1", title: "Trigonometry Quiz", course: "Mathematics S4", dueDate: "Feb 28, 2026", status: "pending", type: "Exam", grade: null as string | null },
+  { id: "2", title: "Physics Lab Report", course: "Physics S4", dueDate: "Mar 2, 2026", status: "pending", type: "Assignment", grade: null as string | null },
+  { id: "3", title: "English Essay", course: "English Language", dueDate: "Mar 5, 2026", status: "pending", type: "Assignment", grade: null as string | null },
+  { id: "4", title: "Algebra Homework", course: "Mathematics S4", dueDate: "Feb 20, 2026", status: "graded", type: "Homework", grade: "85%" },
+  { id: "5", title: "Circuit Diagram", course: "Physics S4", dueDate: "Feb 18, 2026", status: "graded", type: "Lab", grade: "72%" },
+  { id: "6", title: "HTML/CSS Project", course: "ICT & Computer Science", dueDate: "Feb 15, 2026", status: "graded", type: "Project", grade: "90%" },
 ];
 
-const notifications = [
-  { id: 1, message: "New grades posted for Mathematics S4", type: "success", time: "10 min ago", read: false },
-  { id: 2, message: "Physics Lab Report deadline extended to Mar 5", type: "info", time: "1h ago", read: false },
-  { id: 3, message: "School assembly scheduled for Monday 9 AM", type: "info", time: "2h ago", read: false },
-  { id: 4, message: "Your English Essay received an A-", type: "success", time: "5h ago", read: true },
-  { id: 5, message: "ICT assignment due in 2 days", type: "warning", time: "1d ago", read: true },
-  { id: 6, message: "New course materials uploaded for Physics", type: "info", time: "2d ago", read: true },
+const fallbackNotifications = [
+  { id: "1", title: "Grade Posted", message: "New grades posted for Mathematics S4", type: "success" as const, created_at: new Date(Date.now() - 600000).toISOString(), is_read: false },
+  { id: "2", title: "Deadline Extended", message: "Physics Lab Report deadline extended to Mar 5", type: "info" as const, created_at: new Date(Date.now() - 3600000).toISOString(), is_read: false },
+  { id: "3", title: "Assembly", message: "School assembly scheduled for Monday 9 AM", type: "info" as const, created_at: new Date(Date.now() - 7200000).toISOString(), is_read: false },
+  { id: "4", title: "Grade", message: "Your English Essay received an A-", type: "success" as const, created_at: new Date(Date.now() - 18000000).toISOString(), is_read: true },
+  { id: "5", title: "Reminder", message: "ICT assignment due in 2 days", type: "warning" as const, created_at: new Date(Date.now() - 86400000).toISOString(), is_read: true },
 ];
 
 type SortField = "title" | "course" | "dueDate" | "status";
@@ -65,17 +64,43 @@ type SortDir = "asc" | "desc";
 
 const StudentDashboard = () => {
   const { user, profile } = useAuth();
+  const { data: dbCourses } = useStudentCourses();
+  const { data: dbAssignments } = useStudentAssignments();
+  const { data: dbNotifications } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("dueDate");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [showNotifications, setShowNotifications] = useState(true);
-  const [readNotifications, setReadNotifications] = useState<number[]>([]);
 
-  const unreadCount = notifications.filter(n => !n.read && !readNotifications.includes(n.id)).length;
+  // Use DB data if available, otherwise fallback
+  const courses = dbCourses && dbCourses.length > 0
+    ? dbCourses.map((e: any) => ({
+        title: e.courses?.title || "Untitled",
+        teacher: e.courses?.profiles?.full_name || "Unknown",
+        progress: Math.floor(Math.random() * 60 + 30),
+        grade: "—",
+        lastAccessed: "Recently",
+      }))
+    : fallbackCourses;
 
-  const markAsRead = (id: number) => setReadNotifications(prev => [...prev, id]);
-  const markAllRead = () => setReadNotifications(notifications.map(n => n.id));
+  const assignments = dbAssignments && dbAssignments.length > 0
+    ? dbAssignments.map((s: any) => ({
+        id: s.id,
+        title: s.assignments?.title || "Untitled",
+        course: s.assignments?.courses?.title || "—",
+        dueDate: s.assignments?.due_date ? new Date(s.assignments.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
+        status: s.status,
+        type: s.assignments?.assignment_type || "homework",
+        grade: s.score != null ? `${s.score}%` : null,
+      }))
+    : fallbackAssignments;
+
+  const notifications = dbNotifications && dbNotifications.length > 0 ? dbNotifications : fallbackNotifications;
+
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -84,24 +109,33 @@ const StudentDashboard = () => {
 
   const filteredAssignments = useMemo(() => {
     let result = [...assignments];
-    if (searchQuery) result = result.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.course.toLowerCase().includes(searchQuery.toLowerCase()));
-    if (statusFilter !== "all") result = result.filter(a => a.status === statusFilter);
-    result.sort((a, b) => {
+    if (searchQuery) result = result.filter((a: any) => a.title.toLowerCase().includes(searchQuery.toLowerCase()) || a.course.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (statusFilter !== "all") result = result.filter((a: any) => a.status === statusFilter);
+    result.sort((a: any, b: any) => {
       const valA = a[sortField]; const valB = b[sortField];
       const cmp = typeof valA === "string" && typeof valB === "string" ? valA.localeCompare(valB) : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
     return result;
-  }, [searchQuery, statusFilter, sortField, sortDir]);
+  }, [assignments, searchQuery, statusFilter, sortField, sortDir]);
 
   const SortIcon = ({ field }: { field: SortField }) => (
     sortField === field ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronUp className="h-3 w-3 opacity-30" />
   );
 
   const notifIcon = (type: string) => {
-    if (type === "success") return <CheckCircle2 className="h-4 w-4 text-secondary" />;
+    if (type === "success" || type === "grade") return <CheckCircle2 className="h-4 w-4 text-secondary" />;
     if (type === "warning") return <AlertCircle className="h-4 w-4 text-accent-foreground" />;
     return <Info className="h-4 w-4 text-primary" />;
+  };
+
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
   };
 
   return (
@@ -109,10 +143,10 @@ const StudentDashboard = () => {
       {/* Quick Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { icon: BookOpen, label: "Enrolled Courses", value: "4", color: "bg-primary/10 text-primary" },
-          { icon: FileText, label: "Pending Tasks", value: "3", color: "bg-secondary/10 text-secondary" },
+          { icon: BookOpen, label: "Enrolled Courses", value: String(courses.length), color: "bg-primary/10 text-primary" },
+          { icon: FileText, label: "Pending Tasks", value: String(assignments.filter((a: any) => a.status === "pending").length), color: "bg-secondary/10 text-secondary" },
           { icon: BarChart3, label: "Average Grade", value: "78%", color: "bg-accent/20 text-accent-foreground" },
-          { icon: Bell, label: "Notifications", value: String(unreadCount), color: "bg-destructive/10 text-destructive" },
+          { icon: Bell, label: "Unread", value: String(unreadCount), color: "bg-destructive/10 text-destructive" },
         ].map((stat) => (
           <motion.div key={stat.label} whileHover={{ y: -2 }} className="rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
             <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}>
@@ -126,7 +160,6 @@ const StudentDashboard = () => {
 
       {/* Charts Row */}
       <div className="mb-8 grid gap-6 lg:grid-cols-2">
-        {/* Grade Trends */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Grade Trends</h2>
           <ResponsiveContainer width="100%" height={260}>
@@ -158,7 +191,6 @@ const StudentDashboard = () => {
           </div>
         </div>
 
-        {/* Weekly Study Activity */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Weekly Study Activity</h2>
           <ResponsiveContainer width="100%" height={260}>
@@ -175,13 +207,12 @@ const StudentDashboard = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Courses & Skills */}
         <div className="lg:col-span-2 space-y-6">
           {/* Courses */}
           <div>
             <h2 className="mb-4 font-display text-lg font-semibold text-foreground">My Courses</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {courses.map((course) => (
+              {courses.map((course: any) => (
                 <motion.div key={course.title} whileHover={{ y: -2 }} className="rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md">
                   <div className="flex items-start justify-between">
                     <div>
@@ -219,7 +250,6 @@ const StudentDashboard = () => {
           <div>
             <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Assignments</h2>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              {/* Filters */}
               <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -227,15 +257,13 @@ const StudentDashboard = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
-                  {["all", "pending", "graded", "late"].map(f => (
+                  {["all", "pending", "graded", "submitted"].map(f => (
                     <button key={f} onClick={() => setStatusFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${statusFilter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
                       {f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -250,14 +278,14 @@ const StudentDashboard = () => {
                   </thead>
                   <tbody>
                     <AnimatePresence>
-                      {filteredAssignments.map(a => (
+                      {filteredAssignments.map((a: any) => (
                         <motion.tr key={a.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3 font-medium text-foreground">{a.title}</td>
                           <td className="px-4 py-3 text-muted-foreground">{a.course}</td>
                           <td className="px-4 py-3 text-muted-foreground"><span className="flex items-center gap-1"><Clock className="h-3 w-3" />{a.dueDate}</span></td>
                           <td className="px-4 py-3">
                             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                              a.status === "graded" ? "bg-secondary/10 text-secondary" : a.status === "late" ? "bg-destructive/10 text-destructive" : "bg-accent/20 text-accent-foreground"
+                              a.status === "graded" ? "bg-secondary/10 text-secondary" : a.status === "submitted" ? "bg-primary/10 text-primary" : "bg-accent/20 text-accent-foreground"
                             }`}>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span>
                           </td>
                           <td className="px-4 py-3 font-display font-semibold text-foreground">{a.grade || "—"}</td>
@@ -280,40 +308,21 @@ const StudentDashboard = () => {
                 Notifications
                 {unreadCount > 0 && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">{unreadCount}</span>}
               </h2>
-              <button onClick={markAllRead} className="text-xs font-medium text-primary hover:underline">Mark all read</button>
+              <button onClick={() => markAllRead.mutate()} className="text-xs font-medium text-primary hover:underline">Mark all read</button>
             </div>
-            <AnimatePresence>
-              {showNotifications && (
-                <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-                  {notifications.map(n => {
-                    const isRead = n.read || readNotifications.includes(n.id);
-                    return (
-                      <div key={n.id} onClick={() => markAsRead(n.id)} className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-0 cursor-pointer transition-colors hover:bg-muted/30 ${!isRead ? "bg-primary/5" : ""}`}>
-                        {notifIcon(n.type)}
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${!isRead ? "font-medium text-foreground" : "text-muted-foreground"}`}>{n.message}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{n.time}</p>
-                        </div>
-                        {!isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
-                      </div>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Upcoming */}
-          <div>
-            <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Upcoming</h2>
-            <div className="space-y-3">
-              {assignments.filter(a => a.status === "pending").map(item => (
-                <div key={item.id} className="rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-sm">
-                  <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" /> {item.dueDate}
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">{item.type}</span>
+            <div className="max-h-[400px] overflow-y-auto">
+              {notifications.map((n: any) => (
+                <div
+                  key={n.id}
+                  onClick={() => !n.is_read && markRead.mutate(n.id)}
+                  className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-0 cursor-pointer transition-colors hover:bg-muted/30 ${!n.is_read ? "bg-primary/5" : ""}`}
+                >
+                  {notifIcon(n.type)}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm ${!n.is_read ? "font-medium text-foreground" : "text-muted-foreground"}`}>{n.message}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(n.created_at)}</p>
                   </div>
+                  {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                 </div>
               ))}
             </div>

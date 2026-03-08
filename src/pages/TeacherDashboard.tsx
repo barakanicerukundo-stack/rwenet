@@ -1,16 +1,13 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/components/AuthProvider";
-import { BookOpen, Users, FileText, Upload, Search, ChevronUp, ChevronDown, Filter, Bell, CheckCircle2, AlertCircle, Info, TrendingUp, Clock } from "lucide-react";
+import { useTeacherCourses, useTeacherSubmissions, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useCreateCourse, useCreateAssignment } from "@/hooks/useData";
+import { BookOpen, Users, FileText, Upload, Search, ChevronUp, ChevronDown, Filter, Bell, CheckCircle2, AlertCircle, Info, TrendingUp, Clock, Plus } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
-const courses = [
-  { title: "Mathematics S4", students: 42, assignments: 8, pending: 12 },
-  { title: "Mathematics S5", students: 38, assignments: 6, pending: 5 },
-  { title: "Mathematics S6", students: 35, assignments: 10, pending: 18 },
-];
-
+// Fallback chart data
 const gradeDistribution = [
   { name: "A (80-100)", value: 28, color: "hsl(145, 63%, 35%)" },
   { name: "B (60-79)", value: 45, color: "hsl(199, 89%, 40%)" },
@@ -34,25 +31,26 @@ const submissionRate = [
   { week: "W4", onTime: 82, late: 12, missing: 6 },
 ];
 
-const allSubmissions = [
-  { id: 1, student: "Alice Mukamana", assignment: "Trigonometry Quiz", course: "Mathematics S4", date: "Feb 23, 2026", status: "Pending", grade: null },
-  { id: 2, student: "Eric Niyonzima", assignment: "Trigonometry Quiz", course: "Mathematics S4", date: "Feb 23, 2026", status: "Graded", grade: "85%" },
-  { id: 3, student: "Grace Uwase", assignment: "Algebra Homework", course: "Mathematics S4", date: "Feb 22, 2026", status: "Pending", grade: null },
-  { id: 4, student: "David Habimana", assignment: "Algebra Homework", course: "Mathematics S4", date: "Feb 22, 2026", status: "Graded", grade: "72%" },
-  { id: 5, student: "Marie Ingabire", assignment: "Calculus Test", course: "Mathematics S5", date: "Feb 21, 2026", status: "Graded", grade: "90%" },
-  { id: 6, student: "Patrick Mugisha", assignment: "Calculus Test", course: "Mathematics S5", date: "Feb 21, 2026", status: "Late", grade: null },
-  { id: 7, student: "Diane Uwera", assignment: "Probability Quiz", course: "Mathematics S6", date: "Feb 20, 2026", status: "Graded", grade: "68%" },
-  { id: 8, student: "Jean Bosco", assignment: "Probability Quiz", course: "Mathematics S6", date: "Feb 20, 2026", status: "Pending", grade: null },
-  { id: 9, student: "Aline Kamali", assignment: "Vectors Worksheet", course: "Mathematics S4", date: "Feb 19, 2026", status: "Graded", grade: "78%" },
-  { id: 10, student: "Claude Bizimana", assignment: "Statistics Project", course: "Mathematics S6", date: "Feb 18, 2026", status: "Late", grade: "55%" },
+const fallbackSubmissions = [
+  { id: "1", student: "Alice Mukamana", assignment: "Trigonometry Quiz", course: "Mathematics S4", date: "Feb 23, 2026", status: "Pending", grade: null as string | null },
+  { id: "2", student: "Eric Niyonzima", assignment: "Trigonometry Quiz", course: "Mathematics S4", date: "Feb 23, 2026", status: "Graded", grade: "85%" },
+  { id: "3", student: "Grace Uwase", assignment: "Algebra Homework", course: "Mathematics S4", date: "Feb 22, 2026", status: "Pending", grade: null as string | null },
+  { id: "4", student: "David Habimana", assignment: "Algebra Homework", course: "Mathematics S4", date: "Feb 22, 2026", status: "Graded", grade: "72%" },
+  { id: "5", student: "Marie Ingabire", assignment: "Calculus Test", course: "Mathematics S5", date: "Feb 21, 2026", status: "Graded", grade: "90%" },
+  { id: "6", student: "Patrick Mugisha", assignment: "Calculus Test", course: "Mathematics S5", date: "Feb 21, 2026", status: "Late", grade: null as string | null },
 ];
 
-const notifications = [
-  { id: 1, message: "12 new submissions awaiting review", type: "warning", time: "5 min ago", read: false },
-  { id: 2, message: "Alice Mukamana submitted Trigonometry Quiz", type: "info", time: "30 min ago", read: false },
-  { id: 3, message: "S4 class average improved by 5%", type: "success", time: "2h ago", read: false },
-  { id: 4, message: "New curriculum updates available", type: "info", time: "1d ago", read: true },
-  { id: 5, message: "Parent-teacher conference scheduled for Mar 10", type: "info", time: "2d ago", read: true },
+const fallbackNotifications = [
+  { id: "1", title: "Review", message: "12 new submissions awaiting review", type: "warning" as const, created_at: new Date(Date.now() - 300000).toISOString(), is_read: false },
+  { id: "2", title: "Submission", message: "Alice Mukamana submitted Trigonometry Quiz", type: "info" as const, created_at: new Date(Date.now() - 1800000).toISOString(), is_read: false },
+  { id: "3", title: "Improvement", message: "S4 class average improved by 5%", type: "success" as const, created_at: new Date(Date.now() - 7200000).toISOString(), is_read: false },
+  { id: "4", title: "Update", message: "New curriculum updates available", type: "info" as const, created_at: new Date(Date.now() - 86400000).toISOString(), is_read: true },
+];
+
+const fallbackCourses = [
+  { title: "Mathematics S4", students: 42, assignments: 8, pending: 12 },
+  { title: "Mathematics S5", students: 38, assignments: 6, pending: 5 },
+  { title: "Mathematics S6", students: 35, assignments: 10, pending: 18 },
 ];
 
 type SortField = "student" | "assignment" | "course" | "date" | "status";
@@ -60,14 +58,33 @@ type SortDir = "asc" | "desc";
 
 const TeacherDashboard = () => {
   const { user, profile } = useAuth();
+  const { data: dbCourses } = useTeacherCourses();
+  const { data: dbNotifications } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const createCourse = useCreateCourse();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [readNotifications, setReadNotifications] = useState<number[]>([]);
+  const [showNewCourse, setShowNewCourse] = useState(false);
+  const [newCourse, setNewCourse] = useState({ title: "", subject: "", level: "" });
 
-  const unreadCount = notifications.filter(n => !n.read && !readNotifications.includes(n.id)).length;
+  const courses = dbCourses && dbCourses.length > 0
+    ? dbCourses.map((c: any) => ({
+        title: c.title,
+        students: c.enrollments?.[0]?.count || 0,
+        assignments: c.assignments?.[0]?.count || 0,
+        pending: 0,
+      }))
+    : fallbackCourses;
+
+  const notifications = dbNotifications && dbNotifications.length > 0 ? dbNotifications : fallbackNotifications;
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+
+  const allSubmissions = fallbackSubmissions;
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -80,7 +97,7 @@ const TeacherDashboard = () => {
     if (statusFilter !== "all") result = result.filter(s => s.status.toLowerCase() === statusFilter);
     if (courseFilter !== "all") result = result.filter(s => s.course === courseFilter);
     result.sort((a, b) => {
-      const valA = a[sortField]; const valB = b[sortField];
+      const valA = a[sortField as keyof typeof a]; const valB = b[sortField as keyof typeof b];
       const cmp = typeof valA === "string" && typeof valB === "string" ? valA.localeCompare(valB) : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -97,15 +114,39 @@ const TeacherDashboard = () => {
     return <Info className="h-4 w-4 text-primary" />;
   };
 
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  const handleCreateCourse = async () => {
+    if (!newCourse.title || !newCourse.subject || !newCourse.level) {
+      toast.error("Please fill all fields");
+      return;
+    }
+    try {
+      await createCourse.mutateAsync(newCourse);
+      toast.success("Course created!");
+      setShowNewCourse(false);
+      setNewCourse({ title: "", subject: "", level: "" });
+    } catch {
+      toast.error("Failed to create course");
+    }
+  };
+
   return (
     <DashboardLayout role="teacher" userName={profile?.full_name || user?.email || "Teacher"}>
       {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { icon: BookOpen, label: "Active Courses", value: "3", color: "bg-primary/10 text-primary" },
-          { icon: Users, label: "Total Students", value: "115", color: "bg-secondary/10 text-secondary" },
-          { icon: FileText, label: "Pending Grades", value: "35", color: "bg-accent/20 text-accent-foreground" },
-          { icon: Upload, label: "Resources", value: "47", color: "bg-destructive/10 text-destructive" },
+          { icon: BookOpen, label: "Active Courses", value: String(courses.length), color: "bg-primary/10 text-primary" },
+          { icon: Users, label: "Total Students", value: String(courses.reduce((s: number, c: any) => s + c.students, 0)), color: "bg-secondary/10 text-secondary" },
+          { icon: FileText, label: "Pending Grades", value: String(courses.reduce((s: number, c: any) => s + c.pending, 0)), color: "bg-accent/20 text-accent-foreground" },
+          { icon: Bell, label: "Unread", value: String(unreadCount), color: "bg-destructive/10 text-destructive" },
         ].map(stat => (
           <motion.div key={stat.label} whileHover={{ y: -2 }} className="rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
             <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}><stat.icon className="h-5 w-5" /></div>
@@ -117,7 +158,6 @@ const TeacherDashboard = () => {
 
       {/* Charts */}
       <div className="mb-8 grid gap-6 lg:grid-cols-3">
-        {/* Class Performance Trends */}
         <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Class Performance Trends</h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -134,7 +174,6 @@ const TeacherDashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Grade Distribution Pie */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Grade Distribution</h2>
           <ResponsiveContainer width="100%" height={200}>
@@ -155,7 +194,7 @@ const TeacherDashboard = () => {
         </div>
       </div>
 
-      {/* Submission Rate Chart */}
+      {/* Submission Rate */}
       <div className="mb-8 rounded-2xl border border-border bg-card p-5">
         <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Submission Rate (Last 4 Weeks)</h2>
         <ResponsiveContainer width="100%" height={220}>
@@ -165,7 +204,7 @@ const TeacherDashboard = () => {
             <YAxis tick={{ fontSize: 12, fill: "hsl(215, 12%, 50%)" }} />
             <Tooltip contentStyle={{ borderRadius: "0.75rem", border: "1px solid hsl(214, 20%, 88%)" }} />
             <Legend />
-            <Bar dataKey="onTime" stackId="a" fill="hsl(145, 63%, 35%)" name="On Time" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="onTime" stackId="a" fill="hsl(145, 63%, 35%)" name="On Time" />
             <Bar dataKey="late" stackId="a" fill="hsl(45, 93%, 52%)" name="Late" />
             <Bar dataKey="missing" stackId="a" fill="hsl(0, 72%, 51%)" name="Missing" radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -175,7 +214,7 @@ const TeacherDashboard = () => {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Submissions Table */}
         <div className="lg:col-span-2">
-          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">All Submissions</h2>
+          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Recent Submissions</h2>
           <div className="rounded-2xl border border-border bg-card overflow-hidden">
             <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
               <div className="relative flex-1 min-w-[180px]">
@@ -190,12 +229,7 @@ const TeacherDashboard = () => {
                   </button>
                 ))}
               </div>
-              <select value={courseFilter} onChange={e => setCourseFilter(e.target.value)} className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs outline-none focus:border-primary">
-                <option value="all">All Courses</option>
-                {courses.map(c => <option key={c.title} value={c.title}>{c.title}</option>)}
-              </select>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -232,7 +266,7 @@ const TeacherDashboard = () => {
           </div>
         </div>
 
-        {/* Sidebar: Notifications + Courses */}
+        {/* Sidebar */}
         <div className="space-y-6">
           {/* Notifications */}
           <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -241,28 +275,44 @@ const TeacherDashboard = () => {
                 Notifications
                 {unreadCount > 0 && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">{unreadCount}</span>}
               </h2>
-              <button onClick={() => setReadNotifications(notifications.map(n => n.id))} className="text-xs font-medium text-primary hover:underline">Mark all read</button>
+              <button onClick={() => markAllRead.mutate()} className="text-xs font-medium text-primary hover:underline">Mark all read</button>
             </div>
-            {notifications.map(n => {
-              const isRead = n.read || readNotifications.includes(n.id);
-              return (
-                <div key={n.id} onClick={() => setReadNotifications(prev => [...prev, n.id])} className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-0 cursor-pointer transition-colors hover:bg-muted/30 ${!isRead ? "bg-primary/5" : ""}`}>
+            <div className="max-h-[300px] overflow-y-auto">
+              {notifications.map((n: any) => (
+                <div key={n.id} onClick={() => !n.is_read && markRead.mutate(n.id)} className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-0 cursor-pointer transition-colors hover:bg-muted/30 ${!n.is_read ? "bg-primary/5" : ""}`}>
                   {notifIcon(n.type)}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!isRead ? "font-medium text-foreground" : "text-muted-foreground"}`}>{n.message}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{n.time}</p>
+                    <p className={`text-sm ${!n.is_read ? "font-medium text-foreground" : "text-muted-foreground"}`}>{n.message}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(n.created_at)}</p>
                   </div>
-                  {!isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+                  {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
 
-          {/* My Courses */}
+          {/* My Courses + Create */}
           <div>
-            <h2 className="mb-4 font-display text-lg font-semibold text-foreground">My Courses</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-semibold text-foreground">My Courses</h2>
+              <button onClick={() => setShowNewCourse(!showNewCourse)} className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                <Plus className="h-3 w-3" /> New
+              </button>
+            </div>
+
+            {showNewCourse && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 rounded-xl border border-border bg-card p-4 space-y-3">
+                <input type="text" placeholder="Course title" value={newCourse.title} onChange={e => setNewCourse({ ...newCourse, title: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+                <input type="text" placeholder="Subject (e.g. Mathematics)" value={newCourse.subject} onChange={e => setNewCourse({ ...newCourse, subject: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+                <input type="text" placeholder="Level (e.g. S4)" value={newCourse.level} onChange={e => setNewCourse({ ...newCourse, level: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+                <button onClick={handleCreateCourse} disabled={createCourse.isPending} className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                  {createCourse.isPending ? "Creating..." : "Create Course"}
+                </button>
+              </motion.div>
+            )}
+
             <div className="space-y-3">
-              {courses.map(course => (
+              {courses.map((course: any) => (
                 <motion.div key={course.title} whileHover={{ y: -2 }} className="rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
                   <h3 className="font-semibold text-foreground">{course.title}</h3>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center">
