@@ -4,6 +4,7 @@ import {
   GraduationCap, LayoutDashboard, BookOpen, FileText, BarChart3,
   Bell, Settings, LogOut, Users, School, Menu, X
 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
