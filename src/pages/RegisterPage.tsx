@@ -52,17 +52,54 @@ const RegisterPage = () => {
 
   const passwordsMatch = formData.confirmPassword && formData.password === formData.confirmPassword;
 
+  const [registerError, setRegisterError] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step < 3) {
       setStep(step + 1);
       return;
     }
+    if (formData.password !== formData.confirmPassword) {
+      setRegisterError("Passwords do not match");
+      return;
+    }
+    if (!agreedTerms) {
+      setRegisterError("You must agree to the terms");
+      return;
+    }
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    if (selectedRole === "teacher") navigate("/dashboard/teacher");
-    else if (selectedRole === "admin") navigate("/dashboard/admin");
-    else navigate("/dashboard/student");
+    setRegisterError("");
+
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: {
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          role: selectedRole,
+        },
+      },
+    });
+
+    if (error) {
+      setRegisterError(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    // Update profile with additional info
+    if (data.user) {
+      await supabase.from("profiles").update({
+        phone: formData.phone,
+        province: formData.province,
+        school: formData.school,
+      }).eq("user_id", data.user.id);
+    }
+
+    toast.success("Account created! Please check your email to verify.");
+    navigate("/login");
     setIsLoading(false);
   };
 
