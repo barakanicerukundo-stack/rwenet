@@ -119,6 +119,9 @@ const DashboardLayout = ({ children, role, userName }: DashboardLayoutProps) => 
           <h1 className="font-display text-lg font-semibold text-foreground">
             {items.find((i) => i.href === location.pathname)?.label || "Dashboard"}
           </h1>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>
