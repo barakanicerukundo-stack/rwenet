@@ -3,6 +3,7 @@ import { BookOpen, GraduationCap, School, Users, BarChart3, Globe, Shield, Zap, 
 import { motion } from "framer-motion";
 import { useState } from "react";
 import heroImage from "@/assets/hero-education.jpg";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const stats = [
   { icon: School, value: "2,847", label: "Schools Connected", color: "text-primary" },
