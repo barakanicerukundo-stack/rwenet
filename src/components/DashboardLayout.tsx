@@ -47,6 +47,8 @@ const roleLabels = { student: "Student", teacher: "Teacher", admin: "Administrat
 
 const DashboardLayout = ({ children, role, userName }: DashboardLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const items = navItems[role];
 
