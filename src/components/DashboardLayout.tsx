@@ -5,6 +5,7 @@ import {
   Bell, Settings, LogOut, Users, School, Menu, X
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useAuth } from "@/components/AuthProvider";
 
 interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
