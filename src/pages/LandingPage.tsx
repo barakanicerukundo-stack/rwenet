@@ -3,6 +3,7 @@ import { BookOpen, GraduationCap, School, Users, BarChart3, Globe, Shield, Zap, 
 import { motion } from "framer-motion";
 import { useState } from "react";
 import heroImage from "@/assets/hero-education.jpg";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const stats = [
   { icon: School, value: "2,847", label: "Schools Connected", color: "text-primary" },
@@ -70,6 +71,7 @@ const LandingPage = () => {
             <a href="#faq" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">FAQ</a>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link to="/login" className="rounded-lg px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:text-primary">Sign In</Link>
             <Link to="/register" className="rounded-xl bg-hero-gradient px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105">Get Started</Link>
           </div>

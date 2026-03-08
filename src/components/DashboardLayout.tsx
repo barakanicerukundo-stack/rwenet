@@ -4,6 +4,7 @@ import {
   GraduationCap, LayoutDashboard, BookOpen, FileText, BarChart3,
   Bell, Settings, LogOut, Users, School, Menu, X
 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -118,6 +119,9 @@ const DashboardLayout = ({ children, role, userName }: DashboardLayoutProps) => 
           <h1 className="font-display text-lg font-semibold text-foreground">
             {items.find((i) => i.href === location.pathname)?.label || "Dashboard"}
           </h1>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>
