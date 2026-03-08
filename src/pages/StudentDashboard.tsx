@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from "@/components/AuthProvider";
 import { BookOpen, FileText, BarChart3, Bell, Clock, ChevronUp, ChevronDown, Search, Filter, X, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
