@@ -44,6 +44,11 @@ const App = () => (
                   <AdminDashboard />
                 </ProtectedRoute>
               } />
+              <Route path="/settings" element={
+                <ProtectedRoute allowedRoles={["student", "teacher", "admin"]}>
+                  <ProfileSettings />
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

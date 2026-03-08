@@ -102,7 +102,18 @@ const DashboardLayout = ({ children, role, userName }: DashboardLayoutProps) => 
           })}
         </nav>
 
-        <div className="p-4">
+        <div className="space-y-1 p-4">
+          <Link
+            to="/settings"
+            className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+              location.pathname === "/settings"
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            }`}
+          >
+            <Settings className="h-5 w-5" />
+            Settings
+          </Link>
           <button
             onClick={async () => { await signOut(); navigate("/"); }}
             className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
