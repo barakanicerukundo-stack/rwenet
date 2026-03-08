@@ -1,10 +1,13 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/components/AuthProvider";
-import { Users, School, BookOpen, Shield, TrendingUp, AlertTriangle, Search, ChevronUp, ChevronDown, Filter, CheckCircle2, Info, Globe, Activity } from "lucide-react";
+import { useAllUsers, useAllSchools, useAdminStats, useCreateSchool } from "@/hooks/useData";
+import { Users, School, BookOpen, Shield, TrendingUp, AlertTriangle, Search, ChevronUp, ChevronDown, Filter, CheckCircle2, Info, Globe, Activity, Plus } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
+// Chart data
 const userGrowth = [
   { month: "Jul", students: 980000, teachers: 32000 },
   { month: "Aug", students: 1020000, teachers: 33500 },
@@ -17,11 +20,11 @@ const userGrowth = [
 ];
 
 const provinceData = [
-  { province: "Kigali City", schools: 580, students: 320000, teachers: 12000, completion: 92 },
-  { province: "Eastern", schools: 620, students: 280000, teachers: 8500, completion: 78 },
-  { province: "Western", schools: 540, students: 245000, teachers: 7800, completion: 72 },
-  { province: "Northern", schools: 510, students: 198000, teachers: 6200, completion: 68 },
-  { province: "Southern", schools: 597, students: 205000, teachers: 5600, completion: 75 },
+  { province: "Kigali City", schools: 580, students: 320000 },
+  { province: "Eastern", schools: 620, students: 280000 },
+  { province: "Western", schools: 540, students: 245000 },
+  { province: "Northern", schools: 510, students: 198000 },
+  { province: "Southern", schools: 597, students: 205000 },
 ];
 
 const roleDistribution = [
@@ -31,35 +34,21 @@ const roleDistribution = [
 ];
 
 const systemMetrics = [
-  { time: "00:00", cpu: 22, memory: 45, requests: 120 },
-  { time: "04:00", cpu: 15, memory: 42, requests: 45 },
-  { time: "08:00", cpu: 65, memory: 68, requests: 890 },
-  { time: "12:00", cpu: 78, memory: 72, requests: 1200 },
-  { time: "16:00", cpu: 55, memory: 60, requests: 750 },
-  { time: "20:00", cpu: 42, memory: 55, requests: 420 },
-  { time: "Now", cpu: 38, memory: 52, requests: 380 },
+  { time: "00:00", cpu: 22, memory: 45 },
+  { time: "04:00", cpu: 15, memory: 42 },
+  { time: "08:00", cpu: 65, memory: 68 },
+  { time: "12:00", cpu: 78, memory: 72 },
+  { time: "16:00", cpu: 55, memory: 60 },
+  { time: "20:00", cpu: 42, memory: 55 },
+  { time: "Now", cpu: 38, memory: 52 },
 ];
 
-const allUsers = [
-  { id: 1, name: "Alice Mukamana", role: "Student", school: "GS Kigali", province: "Kigali City", date: "Feb 24, 2026", status: "Active" },
-  { id: 2, name: "Eric Niyonzima", role: "Teacher", school: "Lycée de Kigali", province: "Kigali City", date: "Feb 23, 2026", status: "Active" },
-  { id: 3, name: "Grace Uwase", role: "Student", school: "FAWE Girls", province: "Eastern", date: "Feb 23, 2026", status: "Active" },
-  { id: 4, name: "David Habimana", role: "Admin", school: "MINEDUC", province: "Kigali City", date: "Feb 22, 2026", status: "Active" },
-  { id: 5, name: "Marie Ingabire", role: "Teacher", school: "GS Nyanza", province: "Southern", date: "Feb 21, 2026", status: "Pending" },
-  { id: 6, name: "Patrick Mugisha", role: "Student", school: "Collège Christ-Roi", province: "Western", date: "Feb 20, 2026", status: "Active" },
-  { id: 7, name: "Diane Uwera", role: "Student", school: "GS Musanze", province: "Northern", date: "Feb 19, 2026", status: "Suspended" },
-  { id: 8, name: "Jean Bosco", role: "Teacher", school: "ES Rwamagana", province: "Eastern", date: "Feb 18, 2026", status: "Active" },
-  { id: 9, name: "Aline Kamali", role: "Student", school: "APACE Rubavu", province: "Western", date: "Feb 17, 2026", status: "Active" },
-  { id: 10, name: "Claude Bizimana", role: "Admin", school: "REB", province: "Kigali City", date: "Feb 16, 2026", status: "Active" },
-];
-
-const alerts = [
-  { id: 1, message: "3 schools pending approval in Northern Province", type: "warning", time: "10 min ago" },
-  { id: 2, message: "Database backup completed successfully", type: "success", time: "1h ago" },
-  { id: 3, message: "Server load exceeded 80% threshold at 12:00", type: "warning", time: "4h ago" },
-  { id: 4, message: "15 new teacher registrations awaiting verification", type: "info", time: "6h ago" },
-  { id: 5, message: "Monthly analytics report generated", type: "success", time: "1d ago" },
-  { id: 6, message: "Scheduled maintenance window: Mar 8, 02:00-04:00", type: "info", time: "2d ago" },
+const fallbackUsers = [
+  { id: "1", full_name: "Alice Mukamana", role: "student", school: "GS Kigali", province: "Kigali City", created_at: "2026-02-24", status: "active" },
+  { id: "2", full_name: "Eric Niyonzima", role: "teacher", school: "Lycée de Kigali", province: "Kigali City", created_at: "2026-02-23", status: "active" },
+  { id: "3", full_name: "Grace Uwase", role: "student", school: "FAWE Girls", province: "Eastern", created_at: "2026-02-23", status: "active" },
+  { id: "4", full_name: "David Habimana", role: "admin", school: "MINEDUC", province: "Kigali City", created_at: "2026-02-22", status: "active" },
+  { id: "5", full_name: "Marie Ingabire", role: "teacher", school: "GS Nyanza", province: "Southern", created_at: "2026-02-21", status: "pending" },
 ];
 
 type SortField = "name" | "role" | "school" | "province" | "date" | "status";
@@ -67,12 +56,31 @@ type SortDir = "asc" | "desc";
 
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
+  const { data: dbUsers } = useAllUsers();
+  const { data: dbSchools } = useAllSchools();
+  const { data: stats } = useAdminStats();
+  const createSchool = useCreateSchool();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [readAlerts, setReadAlerts] = useState<number[]>([]);
+  const [showNewSchool, setShowNewSchool] = useState(false);
+  const [newSchool, setNewSchool] = useState({ name: "", province: "Kigali City", district: "", school_type: "secondary" });
+
+  // Map DB users or use fallback
+  const allUsers = dbUsers && dbUsers.length > 0
+    ? dbUsers.map((u: any) => ({
+        id: u.id,
+        full_name: u.full_name || "Unnamed",
+        role: u.user_roles?.[0]?.role || "student",
+        school: u.school || "—",
+        province: u.province || "—",
+        created_at: u.created_at,
+        status: "active",
+      }))
+    : fallbackUsers;
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -81,37 +89,48 @@ const AdminDashboard = () => {
 
   const filteredUsers = useMemo(() => {
     let result = [...allUsers];
-    if (searchQuery) result = result.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()) || u.school.toLowerCase().includes(searchQuery.toLowerCase()));
-    if (roleFilter !== "all") result = result.filter(u => u.role.toLowerCase() === roleFilter);
-    if (statusFilter !== "all") result = result.filter(u => u.status.toLowerCase() === statusFilter);
-    result.sort((a, b) => {
-      const valA = a[sortField]; const valB = b[sortField];
+    if (searchQuery) result = result.filter((u: any) => u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || u.school.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (roleFilter !== "all") result = result.filter((u: any) => u.role === roleFilter);
+    if (statusFilter !== "all") result = result.filter((u: any) => u.status === statusFilter);
+    result.sort((a: any, b: any) => {
+      const fieldMap: Record<string, string> = { name: "full_name", date: "created_at" };
+      const key = fieldMap[sortField] || sortField;
+      const valA = a[key]; const valB = b[key];
       const cmp = typeof valA === "string" && typeof valB === "string" ? valA.localeCompare(valB) : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
     return result;
-  }, [searchQuery, roleFilter, statusFilter, sortField, sortDir]);
+  }, [allUsers, searchQuery, roleFilter, statusFilter, sortField, sortDir]);
 
   const SortIcon = ({ field }: { field: SortField }) => (
     sortField === field ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronUp className="h-3 w-3 opacity-30" />
   );
 
-  const alertIcon = (type: string) => {
-    if (type === "success") return <CheckCircle2 className="h-4 w-4 text-secondary" />;
-    if (type === "warning") return <AlertTriangle className="h-4 w-4 text-accent-foreground" />;
-    return <Info className="h-4 w-4 text-primary" />;
-  };
-
   const formatNum = (n: number) => n >= 1000000 ? (n / 1000000).toFixed(2) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+
+  const handleCreateSchool = async () => {
+    if (!newSchool.name || !newSchool.province) {
+      toast.error("School name and province are required");
+      return;
+    }
+    try {
+      await createSchool.mutateAsync(newSchool);
+      toast.success("School added!");
+      setShowNewSchool(false);
+      setNewSchool({ name: "", province: "Kigali City", district: "", school_type: "secondary" });
+    } catch {
+      toast.error("Failed to add school");
+    }
+  };
 
   return (
     <DashboardLayout role="admin" userName={profile?.full_name || user?.email || "Admin"}>
       {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { icon: Users, label: "Total Users", value: "1,248,392", change: "+2.3%", color: "bg-primary/10 text-primary" },
-          { icon: School, label: "Schools", value: "2,847", change: "+12", color: "bg-secondary/10 text-secondary" },
-          { icon: BookOpen, label: "Active Courses", value: "15,420", change: "+340", color: "bg-accent/20 text-accent-foreground" },
+          { icon: Users, label: "Total Users", value: stats ? formatNum(stats.totalUsers) : "—", change: "+2.3%", color: "bg-primary/10 text-primary" },
+          { icon: School, label: "Schools", value: stats ? String(stats.totalSchools) : "—", change: "+12", color: "bg-secondary/10 text-secondary" },
+          { icon: BookOpen, label: "Active Courses", value: stats ? String(stats.totalCourses) : "—", change: "+340", color: "bg-accent/20 text-accent-foreground" },
           { icon: Shield, label: "System Health", value: "99.9%", change: "Stable", color: "bg-secondary/10 text-secondary" },
         ].map(stat => (
           <motion.div key={stat.label} whileHover={{ y: -2 }} className="rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
@@ -127,7 +146,6 @@ const AdminDashboard = () => {
 
       {/* Charts Row 1 */}
       <div className="mb-8 grid gap-6 lg:grid-cols-3">
-        {/* User Growth */}
         <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground flex items-center gap-2"><Globe className="h-5 w-5 text-primary" /> User Growth</h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -152,7 +170,6 @@ const AdminDashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Role Distribution */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Role Distribution</h2>
           <ResponsiveContainer width="100%" height={200}>
@@ -176,7 +193,6 @@ const AdminDashboard = () => {
 
       {/* System Metrics + Province */}
       <div className="mb-8 grid gap-6 lg:grid-cols-2">
-        {/* System Metrics */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <h2 className="mb-4 font-display text-lg font-semibold text-foreground flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /> System Metrics</h2>
           <ResponsiveContainer width="100%" height={220}>
@@ -192,10 +208,27 @@ const AdminDashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Province Overview */}
         <div className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Province Overview</h2>
-          <ResponsiveContainer width="100%" height={220}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg font-semibold text-foreground">Schools by Province</h2>
+            <button onClick={() => setShowNewSchool(!showNewSchool)} className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+              <Plus className="h-3 w-3" /> Add School
+            </button>
+          </div>
+
+          {showNewSchool && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mb-4 rounded-xl border border-border bg-muted/30 p-3 space-y-2">
+              <input type="text" placeholder="School name" value={newSchool.name} onChange={e => setNewSchool({ ...newSchool, name: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus:border-primary" />
+              <select value={newSchool.province} onChange={e => setNewSchool({ ...newSchool, province: e.target.value })} className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus:border-primary">
+                {["Kigali City", "Eastern Province", "Western Province", "Northern Province", "Southern Province"].map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <button onClick={handleCreateSchool} disabled={createSchool.isPending} className="w-full rounded-lg bg-primary py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                {createSchool.isPending ? "Adding..." : "Add School"}
+              </button>
+            </motion.div>
+          )}
+
+          <ResponsiveContainer width="100%" height={showNewSchool ? 140 : 220}>
             <BarChart data={provinceData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 88%)" />
               <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(215, 12%, 50%)" }} />
@@ -207,110 +240,55 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Users Table */}
-        <div className="lg:col-span-2">
-          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">User Management</h2>
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-              <div className="relative flex-1 min-w-[180px]">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input type="text" placeholder="Search users..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                {["all", "student", "teacher", "admin"].map(f => (
-                  <button key={f} onClick={() => setRoleFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${roleFilter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs outline-none focus:border-primary">
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="suspended">Suspended</option>
-              </select>
+      {/* Users Table */}
+      <div>
+        <h2 className="mb-4 font-display text-lg font-semibold text-foreground">User Management</h2>
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input type="text" placeholder="Search users..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    {([["name", "Name"], ["role", "Role"], ["school", "Institution"], ["province", "Province"], ["date", "Joined"], ["status", "Status"]] as [SortField, string][]).map(([field, label]) => (
-                      <th key={field} className="px-4 py-3 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => toggleSort(field)}>
-                        <span className="flex items-center gap-1">{label} <SortIcon field={field} /></span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence>
-                    {filteredUsers.map(user => (
-                      <motion.tr key={user.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 font-medium text-foreground">{user.name}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                            user.role === "Admin" ? "bg-accent/20 text-accent-foreground" : user.role === "Teacher" ? "bg-secondary/10 text-secondary" : "bg-primary/10 text-primary"
-                          }`}>{user.role}</span>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{user.school}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{user.province}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{user.date}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                            user.status === "Active" ? "bg-secondary/10 text-secondary" : user.status === "Pending" ? "bg-accent/20 text-accent-foreground" : "bg-destructive/10 text-destructive"
-                          }`}>{user.status}</span>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-              {filteredUsers.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No users found</p>}
-            </div>
-          </div>
-        </div>
-
-        {/* Alerts Sidebar */}
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="font-display text-lg font-semibold text-foreground">System Alerts</h2>
-              <button onClick={() => setReadAlerts(alerts.map(a => a.id))} className="text-xs font-medium text-primary hover:underline">Dismiss all</button>
-            </div>
-            {alerts.map(a => (
-              <div key={a.id} onClick={() => setReadAlerts(prev => [...prev, a.id])} className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-0 cursor-pointer transition-colors hover:bg-muted/30 ${!readAlerts.includes(a.id) ? "bg-primary/5" : ""}`}>
-                {alertIcon(a.type)}
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!readAlerts.includes(a.id) ? "font-medium text-foreground" : "text-muted-foreground"}`}>{a.message}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{a.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Province Stats Cards */}
-          <div>
-            <h2 className="mb-4 font-display text-lg font-semibold text-foreground">Province Stats</h2>
-            <div className="space-y-3">
-              {provinceData.map(p => (
-                <motion.div key={p.province} whileHover={{ y: -2 }} className="rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-foreground">{p.province}</p>
-                    <span className="text-xs font-medium text-secondary">{p.completion}%</span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
-                    <div><p className="font-display font-bold text-foreground">{p.schools}</p><p className="text-muted-foreground">Schools</p></div>
-                    <div><p className="font-display font-bold text-foreground">{formatNum(p.students)}</p><p className="text-muted-foreground">Students</p></div>
-                    <div><p className="font-display font-bold text-foreground">{formatNum(p.teachers)}</p><p className="text-muted-foreground">Teachers</p></div>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-hero-gradient" style={{ width: `${p.completion}%` }} />
-                  </div>
-                </motion.div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              {["all", "student", "teacher", "admin"].map(f => (
+                <button key={f} onClick={() => setRoleFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${roleFilter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
               ))}
             </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  {([["name", "Name"], ["role", "Role"], ["school", "School"], ["province", "Province"], ["date", "Joined"]] as [SortField, string][]).map(([field, label]) => (
+                    <th key={field} className="px-4 py-3 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => toggleSort(field)}>
+                      <span className="flex items-center gap-1">{label} <SortIcon field={field} /></span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filteredUsers.map((u: any) => (
+                    <motion.tr key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 font-medium text-foreground">{u.full_name}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          u.role === "admin" ? "bg-accent/20 text-accent-foreground" : u.role === "teacher" ? "bg-secondary/10 text-secondary" : "bg-primary/10 text-primary"
+                        }`}>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</span>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{u.school}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{u.province}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+            {filteredUsers.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No users found</p>}
           </div>
         </div>
       </div>
