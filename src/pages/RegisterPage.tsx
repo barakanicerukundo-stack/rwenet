@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap, Eye, EyeOff, Mail, Lock, User, Phone, MapPin, School, CheckCircle2, ArrowRight, ArrowLeft, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const roles = [
   { value: "student", label: "Student", icon: GraduationCap, description: "Access courses and learning materials" },
