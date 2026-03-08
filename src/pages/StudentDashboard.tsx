@@ -64,6 +64,7 @@ type SortField = "title" | "course" | "dueDate" | "status";
 type SortDir = "asc" | "desc";
 
 const StudentDashboard = () => {
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("dueDate");

@@ -59,6 +59,7 @@ type SortField = "student" | "assignment" | "course" | "date" | "status";
 type SortDir = "asc" | "desc";
 
 const TeacherDashboard = () => {
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");

@@ -66,6 +66,7 @@ type SortField = "name" | "role" | "school" | "province" | "date" | "status";
 type SortDir = "asc" | "desc";
 
 const AdminDashboard = () => {
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
