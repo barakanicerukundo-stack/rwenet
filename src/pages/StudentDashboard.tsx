@@ -104,7 +104,7 @@ const StudentDashboard = () => {
   };
 
   return (
-    <DashboardLayout role="student" userName="Jean Pierre">
+    <DashboardLayout role="student" userName={profile?.full_name || user?.email || "Student"}>
       {/* Quick Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[

@@ -97,7 +97,7 @@ const TeacherDashboard = () => {
   };
 
   return (
-    <DashboardLayout role="teacher" userName="Ms. Nkurunziza">
+    <DashboardLayout role="teacher" userName={profile?.full_name || user?.email || "Teacher"}>
       {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[

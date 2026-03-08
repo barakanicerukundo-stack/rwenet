@@ -104,7 +104,7 @@ const AdminDashboard = () => {
   const formatNum = (n: number) => n >= 1000000 ? (n / 1000000).toFixed(2) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 
   return (
-    <DashboardLayout role="admin" userName="Admin Kagabo">
+    <DashboardLayout role="admin" userName={profile?.full_name || user?.email || "Admin"}>
       {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
