@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap, Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2, Shield, Users, BookOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const testimonials = [
   {
@@ -51,16 +53,25 @@ const LoginPage = () => {
     e.preventDefault();
     setIsLoading(true);
     setLoginError("");
-    // Simulate login
-    await new Promise((r) => setTimeout(r, 1500));
-    // Demo: route based on email keyword
-    if (email.includes("teacher")) {
-      navigate("/dashboard/teacher");
-    } else if (email.includes("admin")) {
-      navigate("/dashboard/admin");
-    } else {
-      navigate("/dashboard/student");
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setLoginError(error.message);
+      setIsLoading(false);
+      return;
     }
+
+    // Fetch user role to redirect
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id)
+      .single();
+
+    const role = roleData?.role || "student";
+    toast.success("Welcome back!");
+    navigate(`/dashboard/${role}`);
     setIsLoading(false);
   };
 

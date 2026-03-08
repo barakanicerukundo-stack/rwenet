@@ -1,10 +1,11 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   GraduationCap, LayoutDashboard, BookOpen, FileText, BarChart3,
   Bell, Settings, LogOut, Users, School, Menu, X
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useAuth } from "@/components/AuthProvider";
 
 interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -46,6 +47,8 @@ const roleLabels = { student: "Student", teacher: "Teacher", admin: "Administrat
 
 const DashboardLayout = ({ children, role, userName }: DashboardLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const items = navItems[role];
 
@@ -100,13 +103,13 @@ const DashboardLayout = ({ children, role, userName }: DashboardLayoutProps) => 
         </nav>
 
         <div className="p-4">
-          <Link
-            to="/"
-            className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          <button
+            onClick={async () => { await signOut(); navigate("/"); }}
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             <LogOut className="h-5 w-5" />
             Sign Out
-          </Link>
+          </button>
         </div>
       </aside>
 

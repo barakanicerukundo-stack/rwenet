@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from "@/components/AuthProvider";
 import { Users, School, BookOpen, Shield, TrendingUp, AlertTriangle, Search, ChevronUp, ChevronDown, Filter, CheckCircle2, Info, Globe, Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,6 +66,7 @@ type SortField = "name" | "role" | "school" | "province" | "date" | "status";
 type SortDir = "asc" | "desc";
 
 const AdminDashboard = () => {
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -103,7 +105,7 @@ const AdminDashboard = () => {
   const formatNum = (n: number) => n >= 1000000 ? (n / 1000000).toFixed(2) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 
   return (
-    <DashboardLayout role="admin" userName="Admin Kagabo">
+    <DashboardLayout role="admin" userName={profile?.full_name || user?.email || "Admin"}>
       {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[

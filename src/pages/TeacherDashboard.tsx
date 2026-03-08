@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from "@/components/AuthProvider";
 import { BookOpen, Users, FileText, Upload, Search, ChevronUp, ChevronDown, Filter, Bell, CheckCircle2, AlertCircle, Info, TrendingUp, Clock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -58,6 +59,7 @@ type SortField = "student" | "assignment" | "course" | "date" | "status";
 type SortDir = "asc" | "desc";
 
 const TeacherDashboard = () => {
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [courseFilter, setCourseFilter] = useState("all");
@@ -96,7 +98,7 @@ const TeacherDashboard = () => {
   };
 
   return (
-    <DashboardLayout role="teacher" userName="Ms. Nkurunziza">
+    <DashboardLayout role="teacher" userName={profile?.full_name || user?.email || "Teacher"}>
       {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
