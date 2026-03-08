@@ -14,6 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          author_id: string
+          content: string
+          course_id: string | null
+          created_at: string
+          id: string
+          is_global: boolean | null
+          school_id: string | null
+          title: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          is_global?: boolean | null
+          school_id?: string | null
+          title: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          is_global?: boolean | null
+          school_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          assignment_type: string
+          course_id: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_published: boolean | null
+          max_score: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_type?: string
+          course_id: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_published?: boolean | null
+          max_score?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_type?: string
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_published?: boolean | null
+          max_score?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          level: string
+          max_students: number | null
+          school_id: string | null
+          subject: string
+          teacher_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          level: string
+          max_students?: number | null
+          school_id?: string | null
+          subject: string
+          teacher_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          level?: string
+          max_students?: number | null
+          school_id?: string | null
+          subject?: string
+          teacher_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollments: {
+        Row: {
+          course_id: string
+          enrolled_at: string
+          id: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          course_id: string
+          enrolled_at?: string
+          id?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          course_id?: string
+          enrolled_at?: string
+          id?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          link: string | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -49,6 +259,95 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      schools: {
+        Row: {
+          created_at: string
+          district: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          province: string
+          school_type: string
+          sector: string | null
+          student_count: number | null
+          teacher_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          district?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          province: string
+          school_type?: string
+          sector?: string | null
+          student_count?: number | null
+          teacher_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          district?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          province?: string
+          school_type?: string
+          sector?: string | null
+          student_count?: number | null
+          teacher_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          assignment_id: string
+          content: string | null
+          feedback: string | null
+          file_url: string | null
+          graded_at: string | null
+          id: string
+          score: number | null
+          status: string
+          student_id: string
+          submitted_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          content?: string | null
+          feedback?: string | null
+          file_url?: string | null
+          graded_at?: string | null
+          id?: string
+          score?: number | null
+          status?: string
+          student_id: string
+          submitted_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          content?: string | null
+          feedback?: string | null
+          file_url?: string | null
+          graded_at?: string | null
+          id?: string
+          score?: number | null
+          status?: string
+          student_id?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
