@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from "@/components/AuthProvider";
 import { Users, School, BookOpen, Shield, TrendingUp, AlertTriangle, Search, ChevronUp, ChevronDown, Filter, CheckCircle2, Info, Globe, Activity } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
